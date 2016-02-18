@@ -12,34 +12,52 @@
 #!    You should have received a copy of the GNU General Public License
 #!    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-#!    Copyright Cody Ferber, 2013.
+#!    Copyright Cody Ferber, 2016.
 ###########################################################################
+import argparse
 import select
-import sys
 import socket
-
+import sys
 ###########################################################################
 
-conn1 = socket.create_connection(('localhost', 4068))
-print('Connected!')
-conn1.send('GET /summary HTTP'.encode('utf-8'))
+if __name__ == "__main__":
+    try:
+        while True:
+            parser = argparse.ArgumentParser(description='Process command-line arguements.')
+            parser.add_argument('String', metavar='string',
+                                    help='String to perform GET HTTP request on.')
+            args = parser.parse_args()
 
-try:	
-    while True:
-        rlist, wlist, elist = select.select([conn1.fileno()], [], [], 5)
+            conn1 = socket.create_connection(('localhost', 4068))
+            print('Connected!')
+            conn1.send('GET '.encode('utf-8') + '/'.encode('utf-8') +
+                            args.String.encode('utf-8') + ' HTTP/1.1'.encode('utf-8'))
 
-        for conn in rlist:
+            try:
+                while True:
+                    rlist, wlist, elist = select.select([conn1], [], [conn1], 5)
 
-            recvdata = conn1.recv(512)
-            recvdata = recvdata.decode('utf-8')
+                    if rlist:
+                        recvdata = conn1.recv(512).decode('utf-8')
 
-            if recvdata is '':
+                        if recvdata is not '':
+                            for row in recvdata.split(';'):
+                                print(row)
+                        else:
+                            break
+                    if elist:
+                        break
 
-                print('Client not sending data! Disconnecting!')
-                sys.exit(1)
+            except KeyboardInterrupt:
+                print('Shutting down socket!')
+                conn1.close()
+                print('Socket shutdown!')
+                sys.exit(2)
 
-            else:
-                print('Received: ' + recvdata)
+    except KeyboardInterrupt:
+        print('Shutting down socket!')
+        conn1.close()
+        print('Socket shutdown!')
+        sys.exit(2)
 
-except KeyboardInterrupt:
-    sys.exit(2)
+
