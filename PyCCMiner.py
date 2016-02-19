@@ -24,14 +24,18 @@ if __name__ == "__main__":
     try:
         while True:
             parser = argparse.ArgumentParser(description='Process command-line arguements.')
-            parser.add_argument('String', metavar='string',
+            parser.add_argument('-C', metavar='string', required=False,
                                     help='String to perform GET HTTP request on.')
             args = parser.parse_args()
 
+            if args.C is None:
+                command = input('> ')
+            else:
+                 command = args.C
+
             conn1 = socket.create_connection(('localhost', 4068))
-            print('Connected!')
             conn1.send('GET '.encode('utf-8') + '/'.encode('utf-8') +
-                            args.String.encode('utf-8') + ' HTTP/1.1'.encode('utf-8'))
+                            command.encode('utf-8') + ' HTTP/1.1'.encode('utf-8'))
 
             try:
                 while True:
@@ -39,7 +43,6 @@ if __name__ == "__main__":
 
                     if rlist:
                         recvdata = conn1.recv(512).decode('utf-8')
-
                         if recvdata is not '':
                             for row in recvdata.split(';'):
                                 print(row)
