@@ -42,7 +42,7 @@ if __name__ == "__main__":
                     rlist, wlist, elist = select.select([conn1], [], [conn1], 5)
 
                     if rlist:
-                        recvdata = conn1.recv(512).decode('utf-8')
+                        recvdata = conn1.recv(1024).decode('utf-8')
                         if recvdata is not '':
                             for row in recvdata.split(';'):
                                 print(row)
