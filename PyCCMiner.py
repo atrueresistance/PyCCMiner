@@ -14,10 +14,12 @@
 
 #!    Copyright Cody Ferber, 2016.
 ###########################################################################
+
 import argparse
 import select
 import socket
 import sys
+
 ###########################################################################
 
 if __name__ == "__main__":
@@ -31,7 +33,7 @@ if __name__ == "__main__":
             if args.C is None:
                 command = input('> ')
             else:
-                 command = args.C
+                command = args.C
 
             conn1 = socket.create_connection(('localhost', 4068))
             conn1.send('GET '.encode('utf-8') + '/'.encode('utf-8') +
