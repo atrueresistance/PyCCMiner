@@ -26,52 +26,48 @@ import sys
 
 def doLog(input):
     if args.o is True:
-        with open('output.txt', 'a') as file:
-            file.write('{:%Y-%m-%d:%H:%M:%S}: '.format(datetime.datetime.now()) + input + '\n')
+        try:
+            with open('output.txt', 'a') as file:
+                for row in input.splitlines():
+                    file.write('{:%Y-%m-%d:%H:%M:%S}: '.format(datetime.datetime.now()) + row + '\n')
+
+        finally:
             file.close()
 
 if __name__ == "__main__":
-    try:
-        while True:
-            parser = argparse.ArgumentParser(description='Process command-line arguements.')
-            parser.add_argument('-c', metavar='string', required=False,
-                                    help='GET HTTP request command.')
-            parser.add_argument('-o', action="store_true", required=False,
-                                    help='Log to output.txt.')
-            args = parser.parse_args()
+    while True:
+        parser = argparse.ArgumentParser(description='Process command-line arguements.')
+        parser.add_argument('-c', metavar='string', required=False,
+                                help='GET HTTP request command.')
+        parser.add_argument('-o', action="store_true", required=False,
+                                help='Log to output.txt.')
+        args = parser.parse_args()
 
-            if args.c is None:
-                command = input('> ')
-            else:
-                command = args.c
+        if args.c is None:
+            command = input('> ')
+        else:
+            command = args.c
 
+        try:
             conn1 = socket.create_connection(('localhost', 4068))
             conn1.send('GET '.encode('utf-8') + '/'.encode('utf-8') +
                             command.encode('utf-8') + ' HTTP/1.1'.encode('utf-8'))
 
-            try:
-                while True:
-                    rlist, wlist, elist = select.select([conn1], [], [conn1], 5)
+            rlist, wlist, elist = select.select([conn1], [], [conn1], 5)
 
-                    if rlist:
-                        recvdata = conn1.recv(1024).decode('utf-8')
-                        if recvdata is not '':
-                            for row in recvdata.split(';'):
-                                print(row)
-                                doLog(row)
-                        else:
-                            break
-                    if elist:
-                        break
+            if rlist:
+                recvdata = conn1.recv(1024).decode('utf-8')
+                if recvdata is not '':
+                    for row in recvdata.split(';'):
+                        print(row)
+                        doLog(row)
+                else:
+                    break
+            if elist:
+                break
 
-            except KeyboardInterrupt:
-                print('Shutting down socket!')
-                conn1.close()
-                print('Socket shutdown!')
-                sys.exit(2)
+        except KeyboardInterrupt:
+            sys.exit(0)
 
-    except KeyboardInterrupt:
-        print('Shutting down socket!')
-        conn1.close()
-        print('Socket shutdown!')
-        sys.exit(2)
+        finally:
+            conn1.close()
