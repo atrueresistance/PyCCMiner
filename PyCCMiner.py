@@ -16,24 +16,34 @@
 ###########################################################################
 
 import argparse
+import datetime
+import io
 import select
 import socket
 import sys
 
 ###########################################################################
 
+def doLog(input):
+    if args.o is True:
+        with open('output.txt', 'a') as file:
+            file.write('{:%Y-%m-%d:%H:%M:%S}: '.format(datetime.datetime.now()) + input + '\n')
+            file.close()
+
 if __name__ == "__main__":
     try:
         while True:
             parser = argparse.ArgumentParser(description='Process command-line arguements.')
-            parser.add_argument('-C', metavar='string', required=False,
-                                    help='String to perform GET HTTP request on.')
+            parser.add_argument('-c', metavar='string', required=False,
+                                    help='GET HTTP request command.')
+            parser.add_argument('-o', action="store_true", required=False,
+                                    help='Log to output.txt.')
             args = parser.parse_args()
 
-            if args.C is None:
+            if args.c is None:
                 command = input('> ')
             else:
-                command = args.C
+                command = args.c
 
             conn1 = socket.create_connection(('localhost', 4068))
             conn1.send('GET '.encode('utf-8') + '/'.encode('utf-8') +
@@ -48,6 +58,7 @@ if __name__ == "__main__":
                         if recvdata is not '':
                             for row in recvdata.split(';'):
                                 print(row)
+                                doLog(row)
                         else:
                             break
                     if elist:
@@ -64,5 +75,3 @@ if __name__ == "__main__":
         conn1.close()
         print('Socket shutdown!')
         sys.exit(2)
-
-
