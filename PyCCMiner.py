@@ -27,32 +27,54 @@ import sys
 def doLog(input):
     if args.o is True:
         try:
-            with open('output.txt', 'a') as file:
+            with open(LOG, 'a') as file:
                 for row in input.splitlines():
-                    file.write('{:%Y-%m-%d:%H:%M:%S}: '.format(datetime.datetime.now()) + row + '\n')
+                    file.write('{:%Y-%m-%d:%H:%M:%S}: '.format(
+                                    datetime.datetime.now()) + row + '\n')
+                file.close()
 
-        finally:
+        except IOError:
+            print('IOError: ' + LOG)
+            sys.exit(0)
+
+###########################################################################
+
+def getCfg(i):
+    try:
+        with open('PyCCMiner.ini', 'r') as file:
+            buffer = file.read(None).splitlines()
+            cfgvar = buffer.pop(i).split('=')
             file.close()
+            return cfgvar.pop(1)
+        
+    except IOError:
+        print('IOError: PyCCMiner.ini')
+        sys.exit(0)
+
+###########################################################################
 
 if __name__ == "__main__":
-    while True:
-        parser = argparse.ArgumentParser(description='Process command-line arguements.')
-        parser.add_argument('-c', metavar='string', required=False,
-                                help='GET HTTP request command.')
-        parser.add_argument('-o', action="store_true", required=False,
-                                help='Log to output.txt.')
-        args = parser.parse_args()
+    HOST = getCfg(0)
+    PORT = getCfg(1)
+    LOG  = getCfg(2)
 
-        if args.c is None:
-            command = input('> ')
-        else:
-            command = args.c
+    try:
+        while True:
+            parser = argparse.ArgumentParser(description='Process command-line.')
+            parser.add_argument('-c', metavar='string', required=False,
+                                    help='GET HTTP request command.')
+            parser.add_argument('-o', action="store_true", required=False,
+                                    help='Log to output.txt.')
+            args = parser.parse_args()
 
-        try:
-            conn1 = socket.create_connection(('localhost', 4068))
+            if args.c is None:
+                command = input('> ')
+            else:
+                command = args.c
+
+            conn1 = socket.create_connection((HOST, PORT))
             conn1.send('GET '.encode('utf-8') + '/'.encode('utf-8') +
                             command.encode('utf-8') + ' HTTP/1.1'.encode('utf-8'))
-
             rlist, wlist, elist = select.select([conn1], [], [conn1], 5)
 
             if rlist:
@@ -62,12 +84,16 @@ if __name__ == "__main__":
                         print(row)
                         doLog(row)
                 else:
-                    break
+                    conn1.close()
             if elist:
                 break
 
-        except KeyboardInterrupt:
-            sys.exit(0)
+    except ConnectionError:
+        print('ConnectionError: ' + HOST + ':' + PORT + '!')
+        sys.exit(0)
 
-        finally:
-            conn1.close()
+    except EOFError:
+        sys.exit(0)
+				
+    except KeyboardInterrupt:
+        sys.exit(0)
