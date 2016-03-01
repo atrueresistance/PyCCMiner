@@ -1,4 +1,4 @@
-###########################################################################
+###############################################################################
 #!    This program is free software: you can redistribute it and/or modify
 #!    it under the terms of the GNU General Public License as published by
 #!    the Free Software Foundation, either version 3 of the License, or
@@ -13,8 +13,9 @@
 #!    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 #!    Copyright Cody Ferber, 2016.
-###########################################################################
-
+###############################################################################
+from contextlib import closing
+from contextlib import suppress
 import argparse
 import datetime
 import io
@@ -22,78 +23,75 @@ import select
 import socket
 import sys
 
-###########################################################################
+###############################################################################
+class Client():
+###############################################################################
+    def __enter__(self):
+        return self
 
-def doLog(input):
-    if args.o is True:
-        try:
-            with open(LOG, 'a') as file:
+    def __exit__(self, exception_type, exception_value, traceback):
+#       print(exception_type)
+#       print(exception_value)
+#       print(traceback)
+        return False
+
+###############################################################################
+    def __init__(self):
+        parser = argparse.ArgumentParser(description='Process command-line.')
+        parser.add_argument('-c', metavar='string', required=False,
+                                help='GET HTTP request command.')
+        parser.add_argument('-v', action="store_true", required=False,
+                                help='Verbose to log.txt.')
+        self.args = parser.parse_args()
+
+        print('Loading PyCCMiner.ini.')
+        self.HOST = Client.getCfg(self, '[HOST]')
+        self.PORT = Client.getCfg(self, '[PORT]')
+        self.LOG  = Client.getCfg(self, '[LOG]')
+        print('Connecting: ' + self.HOST + ':' + self.PORT)
+
+        if self.args.v is True:
+            print('Verbose: ' + self.LOG)
+
+###############################################################################
+    def doLog(self, input):
+        if self.args.v is True:
+            with closing(open(self.LOG, 'a')) as file:
                 for row in input.splitlines():
-                    file.write('{:%Y-%m-%d:%H:%M:%S}: '.format(
+                    file.write('[{:%Y-%m-%d:%H:%M:%S}] '.format(
                                     datetime.datetime.now()) + row + '\n')
-                file.close()
 
-        except IOError:
-            print('IOError: ' + LOG)
-            sys.exit(0)
-
-###########################################################################
-
-def getCfg(i):
-    try:
-        with open('PyCCMiner.ini', 'r') as file:
+###############################################################################
+    def getCfg(self, cfgvar):
+        with closing(open('PyCCMiner.ini', 'r')) as file:
             buffer = file.read(None).splitlines()
-            cfgvar = buffer.pop(i).split('=')
-            file.close()
-            return cfgvar.pop(1)
-        
-    except IOError:
-        print('IOError: PyCCMiner.ini')
-        sys.exit(0)
+            cfgvar = buffer.pop(buffer.index(cfgvar) + 1)
+            return cfgvar
 
-###########################################################################
-
-if __name__ == "__main__":
-    HOST = getCfg(0)
-    PORT = getCfg(1)
-    LOG  = getCfg(2)
-
-    try:
+###############################################################################
+    def Connect(self):
         while True:
-            parser = argparse.ArgumentParser(description='Process command-line.')
-            parser.add_argument('-c', metavar='string', required=False,
-                                    help='GET HTTP request command.')
-            parser.add_argument('-o', action="store_true", required=False,
-                                    help='Log to output.txt.')
-            args = parser.parse_args()
-
-            if args.c is None:
-                command = input('> ')
+            if self.args.c is None:
+                with suppress(EOFError):
+                    command = input('> ')
             else:
-                command = args.c
+                command = self.args.c
 
-            conn1 = socket.create_connection((HOST, PORT))
-            conn1.send('GET '.encode('utf-8') + '/'.encode('utf-8') +
-                            command.encode('utf-8') + ' HTTP/1.1'.encode('utf-8'))
-            rlist, wlist, elist = select.select([conn1], [], [conn1], 5)
+            with closing(socket.create_connection((self.HOST, self.PORT))) as conn1:
+                conn1.send('GET '.encode('utf-8') + '/'.encode('utf-8') +
+                                command.encode('utf-8') + ' HTTP/1.1'.encode('utf-8'))
 
-            if rlist:
-                recvdata = conn1.recv(1024).decode('utf-8')
-                if recvdata is not '':
-                    for row in recvdata.split(';'):
-                        print(row)
-                        doLog(row)
-                else:
-                    conn1.close()
-            if elist:
-                break
+                rlist, wlist, elist = select.select([conn1], [], [], 5)
+                if rlist:
+                    recvdata = conn1.recv(1024).decode('utf-8')
+                    if recvdata is not '':
+                        for row in recvdata.split(';'):
+                            print(row)
+                            Client.doLog(self, row)
+                    else:
+                        conn1.shutdown()
 
-    except ConnectionError:
-        print('ConnectionError: ' + HOST + ':' + PORT + '!')
-        sys.exit(0)
-
-    except EOFError:
-        sys.exit(0)
-				
-    except KeyboardInterrupt:
-        sys.exit(0)
+###############################################################################
+if __name__ == "__main__":
+    with Client() as client:
+        client.Connect()
