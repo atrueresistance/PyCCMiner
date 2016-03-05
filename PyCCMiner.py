@@ -15,7 +15,6 @@
 #!    Copyright Cody Ferber, 2016.
 ###############################################################################
 from contextlib import closing
-from contextlib import suppress
 import argparse
 import datetime
 import io
@@ -33,7 +32,7 @@ class Client():
 #       print(exception_type)
 #       print(exception_value)
 #       print(traceback)
-        return False
+        return True
 
 ###############################################################################
     def __init__(self):
@@ -72,8 +71,7 @@ class Client():
     def Connect(self):
         while True:
             if self.args.c is None:
-                with suppress(EOFError):
-                    command = input('> ')
+                command = input('> ')
             else:
                 command = self.args.c
 
